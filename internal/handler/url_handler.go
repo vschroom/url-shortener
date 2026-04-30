@@ -1,10 +1,13 @@
 package handler
 
 import (
-	"encoding/base64"
 	"io"
 	"net/http"
+
+	"github.com/speps/go-hashids/v2"
 )
+
+var store = make(map[int]string)
 
 func UrlHandlerEncoder(rw http.ResponseWriter, r *http.Request) {
 	if !(r.Method == http.MethodPost && r.Header.Get("Content-Type") == "text/plain") {
@@ -18,11 +21,20 @@ func UrlHandlerEncoder(rw http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 
 		parsedUrl := string(body)
-		encodeUrl := "http://" + r.Host + "/" + base64.URLEncoding.EncodeToString([]byte(parsedUrl))
+		count := len(store) + 1
+		store[count] = parsedUrl
+
+		hd := hashids.NewData()
+		hd.Salt = "this is my salt"
+		hd.MinLength = 8
+		h, _ := hashids.NewWithData(hd)
+		encodeUrl, _ := h.Encode([]int{count})
+
+		resultUrl := "http://" + r.Host + "/" + encodeUrl
 
 		rw.WriteHeader(http.StatusCreated)
 		rw.Header().Set("Content-Type", "text/plain")
-		rw.Write([]byte(encodeUrl))
+		rw.Write([]byte(resultUrl))
 	}
 }
 
@@ -30,13 +42,16 @@ func UrlHandlerDecoder(rw http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		rw.WriteHeader(http.StatusBadRequest)
 	} else {
-		encodeUrl := r.PathValue("id")
-		originalUrl, err := base64.URLEncoding.DecodeString(encodeUrl)
-		if err != nil {
-			panic(err)
-		}
+		hd := hashids.NewData()
+		hd.Salt = "this is my salt"
+		hd.MinLength = 8
+		h, _ := hashids.NewWithData(hd)
 
-		rw.Header().Set("Location", string(originalUrl))
+		encodeUrl := r.PathValue("id")
+		d, _ := h.DecodeWithError(encodeUrl)
+		key := d[0]
+
+		rw.Header().Set("Location", store[key])
 		rw.WriteHeader(http.StatusTemporaryRedirect)
 	}
 }
