@@ -18,7 +18,7 @@ func UrlHandlerEncoder(rw http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 
 		parsedUrl := string(body)
-		encodeUrl := "http://" + r.Host + base64.URLEncoding.EncodeToString([]byte(parsedUrl))
+		encodeUrl := "http://" + r.Host + "/" + base64.URLEncoding.EncodeToString([]byte(parsedUrl))
 
 		rw.WriteHeader(http.StatusCreated)
 		rw.Header().Set("Content-Type", "text/plain")
