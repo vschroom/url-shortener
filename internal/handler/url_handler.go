@@ -4,10 +4,14 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/go-chi/chi"
 	"github.com/speps/go-hashids/v2"
 )
 
 var store = make(map[int]string)
+
+const CustomSalt string = "randomsalt"
+const ShortUrlLength = 8
 
 func UrlHandlerEncoder(rw http.ResponseWriter, r *http.Request) {
 	if !(r.Method == http.MethodPost && r.Header.Get("Content-Type") == "text/plain") {
@@ -25,8 +29,8 @@ func UrlHandlerEncoder(rw http.ResponseWriter, r *http.Request) {
 		store[count] = parsedUrl
 
 		hd := hashids.NewData()
-		hd.Salt = "this is my salt"
-		hd.MinLength = 8
+		hd.Salt = CustomSalt
+		hd.MinLength = ShortUrlLength
 		h, _ := hashids.NewWithData(hd)
 		encodeUrl, _ := h.Encode([]int{count})
 
@@ -43,11 +47,11 @@ func UrlHandlerDecoder(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusBadRequest)
 	} else {
 		hd := hashids.NewData()
-		hd.Salt = "this is my salt"
-		hd.MinLength = 8
+		hd.Salt = CustomSalt
+		hd.MinLength = ShortUrlLength
 		h, _ := hashids.NewWithData(hd)
 
-		encodeUrl := r.PathValue("id")
+		encodeUrl := chi.URLParam(r, "id")
 		d, _ := h.DecodeWithError(encodeUrl)
 		key := d[0]
 
