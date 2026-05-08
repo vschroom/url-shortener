@@ -4,6 +4,8 @@ import (
 	"io"
 	"net/http"
 
+	"url-shortener/internal/config/cons"
+
 	"github.com/go-chi/chi"
 	"github.com/speps/go-hashids/v2"
 )
@@ -34,7 +36,7 @@ func UrlHandlerEncoder(rw http.ResponseWriter, r *http.Request) {
 		h, _ := hashids.NewWithData(hd)
 		encodeUrl, _ := h.Encode([]int{count})
 
-		resultUrl := "http://" + r.Host + "/" + encodeUrl
+		resultUrl := cons.ServerConsoleArg.BaseShortAddr + encodeUrl
 
 		rw.WriteHeader(http.StatusCreated)
 		rw.Header().Set("Content-Type", "text/plain")

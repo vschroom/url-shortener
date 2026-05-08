@@ -7,12 +7,16 @@ import (
 	"strings"
 	"testing"
 
+	"url-shortener/internal/config/cons"
+
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestUrlHandlerEncoder(t *testing.T) {
+	cons.ParseServerFlags()
+
 	type want struct {
 		code               int
 		request            string
