@@ -36,7 +36,7 @@ func UrlHandlerEncoder(rw http.ResponseWriter, r *http.Request) {
 		h, _ := hashids.NewWithData(hd)
 		encodeUrl, _ := h.Encode([]int{count})
 
-		resultUrl := cons.ServerConsoleArg.BaseShortAddr + encodeUrl
+		resultUrl := "http://" + cons.ServerConsoleArg.BaseShortAddr + "/" + encodeUrl
 
 		rw.WriteHeader(http.StatusCreated)
 		rw.Header().Set("Content-Type", "text/plain")
