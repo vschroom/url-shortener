@@ -1,21 +1,31 @@
 package handler
 
 import (
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"url-shortener/internal/config/cons"
+	"url-shortener/internal/service"
 
 	"github.com/go-chi/chi"
-	"github.com/speps/go-hashids/v2"
+
+	"crypto/sha256"
+	"net/url"
 )
 
 var store = make(map[int]string)
 
-const CustomSalt string = "randomsalt"
-const ShortUrlLength = 8
+const customSalt string = "randomsalt"
+const shortUrlLength = 8
 
-func UrlHandlerEncoder(rw http.ResponseWriter, r *http.Request) {
+type Handler struct {
+	SrvConsArg cons.ServerConsoleArg
+	Storage    service.Storage
+}
+
+func (handler *Handler) UrlHandlerEncoder(rw http.ResponseWriter, r *http.Request) {
 	if !(r.Method == http.MethodPost && r.Header.Get("Content-Type") == "text/plain") {
 		rw.WriteHeader(http.StatusBadRequest)
 	} else {
@@ -27,16 +37,15 @@ func UrlHandlerEncoder(rw http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 
 		parsedUrl := string(body)
-		count := len(store) + 1
-		store[count] = parsedUrl
+		urlHash := sha256.Sum256([]byte(parsedUrl))
+		shortUrl := fmt.Sprintf("%x", urlHash)[:shortUrlLength]
 
-		hd := hashids.NewData()
-		hd.Salt = CustomSalt
-		hd.MinLength = ShortUrlLength
-		h, _ := hashids.NewWithData(hd)
-		encodeUrl, _ := h.Encode([]int{count})
+		handler.Storage.StoreUrl(shortUrl, parsedUrl)
 
-		resultUrl := cons.ServerConsoleArg.BaseShortAddr + "/" + encodeUrl
+		resultUrl, err := url.JoinPath(handler.SrvConsArg.BaseShortAddr, shortUrl)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		rw.WriteHeader(http.StatusCreated)
 		rw.Header().Set("Content-Type", "text/plain")
@@ -44,20 +53,14 @@ func UrlHandlerEncoder(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func UrlHandlerDecoder(rw http.ResponseWriter, r *http.Request) {
+func (handler *Handler) UrlHandlerDecoder(rw http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		rw.WriteHeader(http.StatusBadRequest)
 	} else {
-		hd := hashids.NewData()
-		hd.Salt = CustomSalt
-		hd.MinLength = ShortUrlLength
-		h, _ := hashids.NewWithData(hd)
-
 		encodeUrl := chi.URLParam(r, "id")
-		d, _ := h.DecodeWithError(encodeUrl)
-		key := d[0]
+		baseUrl := handler.Storage.GetUrl(encodeUrl)
 
-		rw.Header().Set("Location", store[key])
+		rw.Header().Set("Location", baseUrl)
 		rw.WriteHeader(http.StatusTemporaryRedirect)
 	}
 }
