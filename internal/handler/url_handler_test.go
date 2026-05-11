@@ -104,11 +104,9 @@ func TestUrlHandlerEncoder(t *testing.T) {
 }
 
 func TestUrlHandlerDecoder(t *testing.T) {
-	serverConsoleArgs := cons.ParseServerFlags()
 	storage := db.InitStore()
 	h := &Handler{
-		SrvConsArg: serverConsoleArgs,
-		Storage:    storage,
+		Storage: storage,
 	}
 
 	type want struct {
