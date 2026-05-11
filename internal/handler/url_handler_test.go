@@ -16,6 +16,7 @@ import (
 )
 
 func TestUrlHandlerEncoder(t *testing.T) {
+	// init
 	serverConsoleArgs := cons.ParseServerFlags()
 	storage := db.InitStore()
 	h := &Handler{
