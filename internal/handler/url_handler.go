@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -11,17 +10,14 @@ import (
 
 	"github.com/go-chi/chi"
 
-	"crypto/sha256"
 	"net/url"
 )
-
-var store = make(map[int]string)
 
 const shortUrlLength = 8
 
 type Handler struct {
 	SrvConsArg cons.ServerConsoleArg
-	Storage    service.Storage
+	UrlService service.UrlService
 }
 
 func (handler *Handler) UrlHandlerEncoder(rw http.ResponseWriter, r *http.Request) {
@@ -36,25 +32,29 @@ func (handler *Handler) UrlHandlerEncoder(rw http.ResponseWriter, r *http.Reques
 		defer r.Body.Close()
 
 		parsedUrl := string(body)
-		urlHash := sha256.Sum256([]byte(parsedUrl))
-		shortUrl := fmt.Sprintf("%x", urlHash)[:shortUrlLength]
 
-		handler.Storage.StoreUrl(shortUrl, parsedUrl)
+		shortUrl, shortUrlErr := handler.UrlService.StoreUrl(parsedUrl)
+		if shortUrlErr != nil {
+			log.Default().Println(shortUrlErr.Error())
 
-		resultUrl, err := url.JoinPath(handler.SrvConsArg.BaseShortAddr, shortUrl)
-		if err != nil {
-			log.Fatal(err)
+			rw.WriteHeader(http.StatusInternalServerError)
+		} else {
+			resultUrl, err := url.JoinPath(handler.SrvConsArg.BaseShortAddr, shortUrl)
+			if err != nil {
+				log.Default().Println(err.Error())
+				rw.WriteHeader(http.StatusInternalServerError)
+			} else {
+				rw.WriteHeader(http.StatusCreated)
+				rw.Header().Set("Content-Type", "text/plain")
+				rw.Write([]byte(resultUrl))
+			}
 		}
-
-		rw.WriteHeader(http.StatusCreated)
-		rw.Header().Set("Content-Type", "text/plain")
-		rw.Write([]byte(resultUrl))
 	}
 }
 
 func (handler *Handler) UrlHandlerDecoder(rw http.ResponseWriter, r *http.Request) {
 	encodeUrl := chi.URLParam(r, "id")
-	baseUrl := handler.Storage.GetUrl(encodeUrl)
+	baseUrl := handler.UrlService.GetUrl(encodeUrl)
 
 	rw.Header().Set("Location", baseUrl)
 	rw.WriteHeader(http.StatusTemporaryRedirect)

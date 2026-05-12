@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -8,9 +9,12 @@ import (
 
 	"url-shortener/internal/config/cons"
 	"url-shortener/internal/config/db"
+	"url-shortener/internal/service"
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
+
+	"regexp"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -20,7 +24,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 	storage := db.InitStore()
 	h := &Handler{
 		SrvConsArg: serverConsoleArgs,
-		Storage:    storage,
+		UrlService: service.UrlService{Storage: storage},
 	}
 
 	urlHandlerEncoder := http.HandlerFunc(h.UrlHandlerEncoder)
@@ -33,7 +37,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 		request            string
 		requestMethod      string
 		requestContentType string
-		response           string
+		responseRegexp     string
 		contentType        string
 	}
 	tests := []struct {
@@ -47,7 +51,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 				request:            "https://yandex.ru/",
 				requestMethod:      http.MethodPost,
 				requestContentType: "text/plain",
-				response:           "http://localhost:8080/77fca595",
+				responseRegexp:     "^http://localhost:8080/[a-zA-Z0-9]{8}$",
 				contentType:        "text/plain; charset=utf-8",
 			},
 		},
@@ -58,7 +62,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 				request:            "https://ya.ru/",
 				requestMethod:      http.MethodPost,
 				requestContentType: "text/plain",
-				response:           "http://localhost:8080/e12f5f6c",
+				responseRegexp:     "^http://localhost:8080/[a-zA-Z0-9]{8}$",
 				contentType:        "text/plain; charset=utf-8",
 			},
 		},
@@ -69,7 +73,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 				request:            "https://ya.ru/",
 				requestMethod:      http.MethodGet,
 				requestContentType: "text/plain; charset=utf-8",
-				response:           "",
+				responseRegexp:     "",
 				contentType:        "",
 			},
 		},
@@ -80,7 +84,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 				request:            "https://ya.ru/",
 				requestMethod:      http.MethodPost,
 				requestContentType: "application/json",
-				response:           "",
+				responseRegexp:     "",
 				contentType:        "",
 			},
 		},
@@ -97,7 +101,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 			assert.Equal(t, test.want.code, resp.StatusCode())
 
 			rowBody := resp.Body()
-			assert.Equal(t, test.want.response, string(rowBody))
+			assert.Regexp(t, regexp.MustCompile(test.want.responseRegexp), string(rowBody))
 			assert.Equal(t, test.want.contentType, resp.Header().Get("Content-Type"))
 		})
 	}
@@ -106,7 +110,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 func TestUrlHandlerDecoder(t *testing.T) {
 	storage := db.InitStore()
 	h := &Handler{
-		Storage: storage,
+		UrlService: service.UrlService{Storage: storage},
 	}
 
 	urlHandlerDecoder := http.HandlerFunc(h.UrlHandlerDecoder)
@@ -116,7 +120,6 @@ func TestUrlHandlerDecoder(t *testing.T) {
 
 	type want struct {
 		code               int
-		request            string
 		requestMethod      string
 		requestContentType string
 		headerLocation     string
@@ -127,10 +130,9 @@ func TestUrlHandlerDecoder(t *testing.T) {
 		want want
 	}{
 		{
-			name: "#1 should return 307 for 77fca595",
+			name: "#1 should return 307 for https://yandex.ru/",
 			want: want{
 				code:               307,
-				request:            "/77fca595",
 				requestMethod:      http.MethodGet,
 				requestContentType: "text/plain",
 				headerLocation:     "https://yandex.ru/",
@@ -138,10 +140,9 @@ func TestUrlHandlerDecoder(t *testing.T) {
 			},
 		},
 		{
-			name: "#2 should return 307 for e12f5f6c",
+			name: "#2 should return 307 for https://ya.ru/",
 			want: want{
 				code:               307,
-				request:            "/e12f5f6c",
 				requestMethod:      http.MethodGet,
 				requestContentType: "text/plain",
 				headerLocation:     "https://ya.ru/",
@@ -152,7 +153,6 @@ func TestUrlHandlerDecoder(t *testing.T) {
 			name: "#3 should return bad request with wrong http method",
 			want: want{
 				code:               405,
-				request:            "/lGBPMKLe",
 				requestMethod:      http.MethodPost,
 				requestContentType: "text/plain",
 				headerLocation:     "",
@@ -165,9 +165,12 @@ func TestUrlHandlerDecoder(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			postReq := httptest.NewRequest(http.MethodPost, "http://localhost:8080/", strings.NewReader(test.want.headerLocation))
 			postReq.Header.Set("Content-Type", "text/plain")
-			h.UrlHandlerEncoder(httptest.NewRecorder(), postReq)
+			rdr := httptest.NewRecorder()
+			h.UrlHandlerEncoder(rdr, postReq)
+			url, err := io.ReadAll(rdr.Body)
+			assert.NoError(t, err)
 
-			request := httptest.NewRequest(test.want.requestMethod, test.want.request, nil)
+			request := httptest.NewRequest(test.want.requestMethod, "http://localhost:8080/"+string(url), nil)
 			request.Header.Set("Content-Type", test.want.requestContentType)
 
 			// создаём новый Recorder

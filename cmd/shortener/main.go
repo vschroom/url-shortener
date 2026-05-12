@@ -5,6 +5,7 @@ import (
 	"url-shortener/internal/config/cons"
 	"url-shortener/internal/config/db"
 	"url-shortener/internal/handler"
+	"url-shortener/internal/service"
 
 	"log"
 
@@ -17,7 +18,7 @@ func main() {
 
 	h := &handler.Handler{
 		SrvConsArg: serverArgs,
-		Storage:    storage,
+		UrlService: service.UrlService{Storage: storage},
 	}
 
 	router := chi.NewRouter()

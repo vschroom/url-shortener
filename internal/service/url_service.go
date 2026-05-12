@@ -1,13 +1,50 @@
 package service
 
-type Storage struct {
-	Store map[string]string
+import (
+	"errors"
+	"log"
+	"math/rand/v2"
+	"url-shortener/internal/repository"
+)
+
+type UrlService struct {
+	Storage repository.Storage
 }
 
-func (storage *Storage) StoreUrl(shortUrl string, baseUrl string) {
-	storage.Store[shortUrl] = baseUrl
+const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const shortUrlLength = 8
+const maxShortUrlRetryCount = 5
+
+func (urlService *UrlService) StoreUrl(baseUrl string) (string, error) {
+	randShortUrl := randomString(shortUrlLength)
+	for n := range maxShortUrlRetryCount {
+		log.Default().Printf("Try #%d to store short Url\n", (n + 1))
+		err := urlService.Storage.StoreUrl(randShortUrl, baseUrl)
+		if err != nil && errors.Is(err, repository.ShortUrlDuplicateKeyError{}) {
+			log.Default().Println("Short Url duplicate for different base urls. Try to generate another one")
+			randShortUrl = randomString(shortUrlLength)
+		} else if err != nil {
+			return "", err
+		} else {
+			log.Default().Println("Short Url successfully generated and store")
+			return randShortUrl, nil
+		}
+	}
+
+	return "", errors.New("Short Url generation failed")
 }
 
-func (storage *Storage) GetUrl(shortUrl string) string {
-	return storage.Store[shortUrl]
+func (urlService *UrlService) GetUrl(shortUrl string) string {
+	return urlService.Storage.GetUrl(shortUrl)
+}
+
+func randomString(length int) string {
+	rowBytes := make([]byte, length)
+
+	for i := range rowBytes {
+		randByteIdx := rand.IntN(len(charset))
+		rowBytes[i] = charset[randByteIdx]
+	}
+
+	return string(rowBytes)
 }
