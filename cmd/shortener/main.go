@@ -9,6 +9,8 @@ import (
 
 	"log"
 
+	"errors"
+
 	"github.com/go-chi/chi"
 )
 
@@ -26,7 +28,7 @@ func main() {
 	router.Post("/", h.UrlHandlerEncoder)
 
 	err := http.ListenAndServe(serverArgs.Addr, router)
-	if err != nil {
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
 }
