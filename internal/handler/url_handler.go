@@ -17,7 +17,6 @@ import (
 
 var store = make(map[int]string)
 
-const customSalt string = "randomsalt"
 const shortUrlLength = 8
 
 type Handler struct {
@@ -26,7 +25,7 @@ type Handler struct {
 }
 
 func (handler *Handler) UrlHandlerEncoder(rw http.ResponseWriter, r *http.Request) {
-	if !(r.Method == http.MethodPost && r.Header.Get("Content-Type") == "text/plain") {
+	if r.Header.Get("Content-Type") != "text/plain" {
 		rw.WriteHeader(http.StatusBadRequest)
 	} else {
 		body, err := io.ReadAll(r.Body)
@@ -54,13 +53,9 @@ func (handler *Handler) UrlHandlerEncoder(rw http.ResponseWriter, r *http.Reques
 }
 
 func (handler *Handler) UrlHandlerDecoder(rw http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		rw.WriteHeader(http.StatusBadRequest)
-	} else {
-		encodeUrl := chi.URLParam(r, "id")
-		baseUrl := handler.Storage.GetUrl(encodeUrl)
+	encodeUrl := chi.URLParam(r, "id")
+	baseUrl := handler.Storage.GetUrl(encodeUrl)
 
-		rw.Header().Set("Location", baseUrl)
-		rw.WriteHeader(http.StatusTemporaryRedirect)
-	}
+	rw.Header().Set("Location", baseUrl)
+	rw.WriteHeader(http.StatusTemporaryRedirect)
 }
