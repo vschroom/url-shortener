@@ -20,7 +20,7 @@ func (urlService *UrlService) StoreUrl(baseUrl string) (string, error) {
 	for n := range maxShortUrlRetryCount {
 		log.Default().Printf("Try #%d to store short Url\n", (n + 1))
 		err := urlService.Storage.StoreUrl(randShortUrl, baseUrl)
-		if err != nil && errors.Is(err, repository.ShortUrlDuplicateKeyError{}) {
+		if err != nil && errors.Is(err, repository.ErrShortUrlDuplicateKey) {
 			log.Default().Println("Short Url duplicate for different base urls. Try to generate another one")
 			randShortUrl = randomString(shortUrlLength)
 		} else if err != nil {

@@ -18,10 +18,7 @@ func main() {
 	serverArgs := cons.ParseServerFlags()
 	storage := db.InitStore()
 
-	h := &handler.Handler{
-		SrvConsArg: serverArgs,
-		UrlService: service.UrlService{Storage: storage},
-	}
+	h := handler.NewHandler(serverArgs, service.UrlService{Storage: storage})
 
 	router := chi.NewRouter()
 	router.Get("/{id}", h.UrlHandlerDecoder)

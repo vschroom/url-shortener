@@ -22,10 +22,7 @@ import (
 func TestUrlHandlerEncoder(t *testing.T) {
 	serverConsoleArgs := cons.ParseServerFlags()
 	storage := db.InitStore()
-	h := &Handler{
-		SrvConsArg: serverConsoleArgs,
-		UrlService: service.UrlService{Storage: storage},
-	}
+	h := NewHandler(serverConsoleArgs, service.UrlService{Storage: storage})
 
 	urlHandlerEncoder := http.HandlerFunc(h.UrlHandlerEncoder)
 	server := httptest.NewServer(urlHandlerEncoder)
@@ -110,7 +107,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 func TestUrlHandlerDecoder(t *testing.T) {
 	storage := db.InitStore()
 	h := &Handler{
-		UrlService: service.UrlService{Storage: storage},
+		urlService: service.UrlService{Storage: storage},
 	}
 
 	urlHandlerDecoder := http.HandlerFunc(h.UrlHandlerDecoder)

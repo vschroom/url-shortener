@@ -13,11 +13,16 @@ import (
 	"net/url"
 )
 
-const shortUrlLength = 8
-
 type Handler struct {
-	SrvConsArg cons.ServerConsoleArg
-	UrlService service.UrlService
+	srvConsArg cons.ServerConsoleArg
+	urlService service.UrlService
+}
+
+func NewHandler(srvConsArg cons.ServerConsoleArg, urlService service.UrlService) *Handler {
+	return &Handler{
+		srvConsArg: srvConsArg,
+		urlService: urlService,
+	}
 }
 
 func (handler *Handler) UrlHandlerEncoder(rw http.ResponseWriter, r *http.Request) {
@@ -33,13 +38,13 @@ func (handler *Handler) UrlHandlerEncoder(rw http.ResponseWriter, r *http.Reques
 
 		parsedUrl := string(body)
 
-		shortUrl, shortUrlErr := handler.UrlService.StoreUrl(parsedUrl)
+		shortUrl, shortUrlErr := handler.urlService.StoreUrl(parsedUrl)
 		if shortUrlErr != nil {
 			log.Default().Println(shortUrlErr.Error())
 
 			rw.WriteHeader(http.StatusInternalServerError)
 		} else {
-			resultUrl, err := url.JoinPath(handler.SrvConsArg.BaseShortAddr, shortUrl)
+			resultUrl, err := url.JoinPath(handler.srvConsArg.BaseShortAddr, shortUrl)
 			if err != nil {
 				log.Default().Println(err.Error())
 				rw.WriteHeader(http.StatusInternalServerError)
@@ -54,7 +59,7 @@ func (handler *Handler) UrlHandlerEncoder(rw http.ResponseWriter, r *http.Reques
 
 func (handler *Handler) UrlHandlerDecoder(rw http.ResponseWriter, r *http.Request) {
 	encodeUrl := chi.URLParam(r, "id")
-	baseUrl := handler.UrlService.GetUrl(encodeUrl)
+	baseUrl := handler.urlService.GetUrl(encodeUrl)
 
 	rw.Header().Set("Location", baseUrl)
 	rw.WriteHeader(http.StatusTemporaryRedirect)
