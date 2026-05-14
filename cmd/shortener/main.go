@@ -2,8 +2,8 @@ package main
 
 import (
 	"net/http"
-	"url-shortener/internal/config/cons"
 	"url-shortener/internal/config/db"
+	"url-shortener/internal/config/srv"
 	"url-shortener/internal/handler"
 	"url-shortener/internal/service"
 
@@ -15,16 +15,16 @@ import (
 )
 
 func main() {
-	serverArgs := cons.ParseServerFlags()
+	serverConfig := srv.InitServerConfig()
 	storage := db.InitStore()
 
-	h := handler.NewHandler(serverArgs, service.UrlService{Storage: storage})
+	h := handler.NewHandler(serverConfig, service.UrlService{Storage: storage})
 
 	router := chi.NewRouter()
 	router.Get("/{id}", h.UrlHandlerDecoder)
 	router.Post("/", h.UrlHandlerEncoder)
 
-	err := http.ListenAndServe(serverArgs.Addr, router)
+	err := http.ListenAndServe(serverConfig.Addr, router)
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}

@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"url-shortener/internal/config/cons"
+	"url-shortener/internal/config/srv"
 	"url-shortener/internal/service"
 
 	"github.com/go-chi/chi"
@@ -14,14 +14,14 @@ import (
 )
 
 type Handler struct {
-	srvConsArg cons.ServerConsoleArg
-	urlService service.UrlService
+	serverConfig srv.ServerConfig
+	urlService   service.UrlService
 }
 
-func NewHandler(srvConsArg cons.ServerConsoleArg, urlService service.UrlService) *Handler {
+func NewHandler(srvConsArg srv.ServerConfig, urlService service.UrlService) *Handler {
 	return &Handler{
-		srvConsArg: srvConsArg,
-		urlService: urlService,
+		serverConfig: srvConsArg,
+		urlService:   urlService,
 	}
 }
 
@@ -44,7 +44,7 @@ func (handler *Handler) UrlHandlerEncoder(rw http.ResponseWriter, r *http.Reques
 
 			rw.WriteHeader(http.StatusInternalServerError)
 		} else {
-			resultUrl, err := url.JoinPath(handler.srvConsArg.BaseShortAddr, shortUrl)
+			resultUrl, err := url.JoinPath(handler.serverConfig.BaseShortAddr, shortUrl)
 			if err != nil {
 				log.Default().Println(err.Error())
 				rw.WriteHeader(http.StatusInternalServerError)

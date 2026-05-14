@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"url-shortener/internal/config/cons"
 	"url-shortener/internal/config/db"
+	"url-shortener/internal/config/srv"
 	"url-shortener/internal/service"
 
 	"github.com/go-chi/chi"
@@ -20,9 +20,9 @@ import (
 )
 
 func TestUrlHandlerEncoder(t *testing.T) {
-	serverConsoleArgs := cons.ParseServerFlags()
+	serverConfig := srv.InitServerConfig()
 	storage := db.InitStore()
-	h := NewHandler(serverConsoleArgs, service.UrlService{Storage: storage})
+	h := NewHandler(serverConfig, service.UrlService{Storage: storage})
 
 	urlHandlerEncoder := http.HandlerFunc(h.UrlHandlerEncoder)
 	server := httptest.NewServer(urlHandlerEncoder)
@@ -48,7 +48,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 				request:            "https://yandex.ru/",
 				requestMethod:      http.MethodPost,
 				requestContentType: "text/plain",
-				responseRegexp:     "^http://localhost:8080/[a-zA-Z0-9]{8}$",
+				responseRegexp:     "^" + serverConfig.BaseShortAddr + "[a-zA-Z0-9]{8}$",
 				contentType:        "text/plain; charset=utf-8",
 			},
 		},
@@ -59,7 +59,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 				request:            "https://ya.ru/",
 				requestMethod:      http.MethodPost,
 				requestContentType: "text/plain",
-				responseRegexp:     "^http://localhost:8080/[a-zA-Z0-9]{8}$",
+				responseRegexp:     "^" + serverConfig.BaseShortAddr + "[a-zA-Z0-9]{8}$",
 				contentType:        "text/plain; charset=utf-8",
 			},
 		},

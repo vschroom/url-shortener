@@ -3,6 +3,7 @@ module url-shortener
 go 1.26.0
 
 require (
+	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/go-chi/chi v1.5.5
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/stretchr/testify v1.11.1
