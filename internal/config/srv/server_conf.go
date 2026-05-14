@@ -19,15 +19,20 @@ func InitServerConfig() ServerConfig {
 		log.Fatal("Error while parse Env values")
 	}
 
+	var consoleParamEnabled = false
 	if cfg.Addr == "" {
 		flag.StringVar(&cfg.Addr, "a", ":8080", "address and port to run server")
+		consoleParamEnabled = true
 	}
 
 	if cfg.BaseShortAddr == "" {
 		flag.StringVar(&cfg.BaseShortAddr, "b", "http://localhost:8080/", "base address and port for short url")
+		consoleParamEnabled = true
 	}
 
-	flag.Parse()
+	if consoleParamEnabled {
+		flag.Parse()
+	}
 
 	return cfg
 }
