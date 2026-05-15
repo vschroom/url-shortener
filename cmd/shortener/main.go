@@ -5,6 +5,7 @@ import (
 	"url-shortener/internal/config/db"
 	"url-shortener/internal/config/srv"
 	"url-shortener/internal/handler"
+	"url-shortener/internal/logger"
 	"url-shortener/internal/service"
 
 	"log"
@@ -18,11 +19,16 @@ func main() {
 	serverConfig := srv.InitServerConfig()
 	storage := db.InitStore()
 
+	logErr := logger.Initialize(serverConfig.LoggerLevel)
+	if logErr != nil {
+		log.Fatal(logErr)
+	}
+
 	h := handler.NewHandler(serverConfig, service.UrlService{Storage: storage})
 
 	router := chi.NewRouter()
-	router.Get("/{id}", h.UrlHandlerDecoder)
-	router.Post("/", h.UrlHandlerEncoder)
+	router.Get("/{id}", handler.LoggerHandler(h.UrlHandlerDecoder))
+	router.Post("/", handler.LoggerHandler(h.UrlHandlerEncoder))
 
 	err := http.ListenAndServe(serverConfig.Addr, router)
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {

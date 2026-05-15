@@ -2,8 +2,8 @@ package handler
 
 import (
 	"io"
-	"log"
 	"net/http"
+	"url-shortener/internal/logger"
 
 	"url-shortener/internal/config/srv"
 	"url-shortener/internal/service"
@@ -40,13 +40,13 @@ func (handler *Handler) UrlHandlerEncoder(rw http.ResponseWriter, r *http.Reques
 
 		shortUrl, shortUrlErr := handler.urlService.StoreUrl(parsedUrl)
 		if shortUrlErr != nil {
-			log.Default().Println(shortUrlErr.Error())
+			logger.Log.Info(shortUrlErr.Error())
 
 			rw.WriteHeader(http.StatusInternalServerError)
 		} else {
 			resultUrl, err := url.JoinPath(handler.serverConfig.BaseShortAddr, shortUrl)
 			if err != nil {
-				log.Default().Println(err.Error())
+				logger.Log.Info(err.Error())
 				rw.WriteHeader(http.StatusInternalServerError)
 			} else {
 				rw.WriteHeader(http.StatusCreated)

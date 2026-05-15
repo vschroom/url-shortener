@@ -7,14 +7,16 @@ import (
 )
 
 type ServerConfig struct {
-	Addr          string `env:"SERVER_ADDRESS"`
-	BaseShortAddr string `env:"BASE_URL"`
+	Addr          string
+	BaseShortAddr string
+	LoggerLevel   string
 }
 
 func InitServerConfig() ServerConfig {
 	var cfg ServerConfig
 	flag.StringVar(&cfg.Addr, "a", ":8080", "address and port to run server")
 	flag.StringVar(&cfg.BaseShortAddr, "b", "http://localhost:8080/", "base address and port for short url")
+	flag.StringVar(&cfg.LoggerLevel, "l", "Info", "logger level")
 	flag.Parse()
 
 	if srvAddress := os.Getenv("SERVER_ADDRESS"); srvAddress != "" {
@@ -23,6 +25,10 @@ func InitServerConfig() ServerConfig {
 
 	if baseUrl := os.Getenv("BASE_URL"); baseUrl != "" {
 		cfg.BaseShortAddr = baseUrl
+	}
+
+	if loggerLevel := os.Getenv("LOGGER_LEVEL"); loggerLevel != "" {
+		cfg.LoggerLevel = loggerLevel
 	}
 
 	return cfg
