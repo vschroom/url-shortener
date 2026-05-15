@@ -18,7 +18,7 @@ func LoggerHandler(h http.HandlerFunc) http.HandlerFunc {
 			size:   0,
 		}
 		lw := loggingResponseWriter{
-			ResponseWriter: w, // встраиваем оригинальный http.ResponseWriter
+			ResponseWriter: w,
 			responseData:   responseData,
 		}
 
