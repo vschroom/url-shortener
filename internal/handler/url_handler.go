@@ -1,14 +1,17 @@
 package handler
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"url-shortener/internal/logger"
+	"url-shortener/internal/model"
 
 	"url-shortener/internal/config/srv"
 	"url-shortener/internal/service"
 
 	"github.com/go-chi/chi"
+	"go.uber.org/zap"
 
 	"net/url"
 )
@@ -63,4 +66,37 @@ func (handler *Handler) UrlHandlerDecoder(rw http.ResponseWriter, r *http.Reques
 
 	rw.Header().Set("Location", baseUrl)
 	rw.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func (handler *Handler) JsonUrlHandler(rw http.ResponseWriter, r *http.Request) {
+	var req model.Request
+	jsonDec := json.NewDecoder(r.Body)
+	if err := jsonDec.Decode(&req); err != nil {
+		logger.Log.Error("Cannot parse request json body", zap.Error(err))
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	shortUrl, shortUrlErr := handler.urlService.StoreUrl(req.Url)
+	if shortUrlErr != nil {
+		logger.Log.Error(shortUrlErr.Error())
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resultUrl, joinPathErr := url.JoinPath(handler.serverConfig.BaseShortAddr, shortUrl)
+	if joinPathErr != nil {
+		logger.Log.Error(joinPathErr.Error())
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusCreated)
+
+	resp := model.Response{Result: resultUrl}
+	jsonEnc := json.NewEncoder(rw)
+	jsonEnc.Encode(resp)
+
+	logger.Log.Info("Successfully processed")
 }

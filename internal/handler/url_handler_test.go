@@ -183,3 +183,80 @@ func TestUrlHandlerDecoder(t *testing.T) {
 		})
 	}
 }
+
+func TestJsonUrlHandler(t *testing.T) {
+	storage := db.InitStore()
+	h := &Handler{
+		urlService: service.UrlService{Storage: storage},
+	}
+
+	r := chi.NewRouter()
+	r.Post("/api/shorten", h.JsonUrlHandler)
+	server := httptest.NewServer(r)
+
+	defer server.Close()
+
+	testCases := []struct {
+		name         string
+		method       string
+		body         string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "#1 method not allowed for GET",
+			method:       http.MethodGet,
+			expectedCode: http.StatusMethodNotAllowed,
+			expectedBody: "",
+		},
+		{
+			name:         "#2 method not allowed for PUT",
+			method:       http.MethodPut,
+			expectedCode: http.StatusMethodNotAllowed,
+			expectedBody: "",
+		},
+		{
+			name:         "#3 method not allowed for DELETE",
+			method:       http.MethodDelete,
+			expectedCode: http.StatusMethodNotAllowed,
+			expectedBody: "",
+		},
+		{
+			name:         "#4 method POST without body",
+			method:       http.MethodPost,
+			expectedCode: http.StatusInternalServerError,
+			expectedBody: "",
+		},
+		{
+			name:         "#5 method_post_unsupported_type",
+			method:       http.MethodPost,
+			body:         `[{"url":""}]`,
+			expectedCode: http.StatusInternalServerError,
+			expectedBody: "",
+		},
+		{
+			name:         "method_post_success",
+			method:       http.MethodPost,
+			body:         `{"url":"https://ya.ru/"}`,
+			expectedCode: http.StatusCreated,
+			expectedBody: `{"result":""}`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(tc.method, server.URL+"/api/shorten", strings.NewReader(tc.body))
+			request.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, request)
+			resp := w.Result()
+
+			assert.Equal(t, tc.expectedCode, resp.StatusCode, "Response code didn't match expected")
+			if tc.expectedBody != "" {
+				body, err := io.ReadAll(resp.Body)
+				assert.NoError(t, err, "error read json body")
+				assert.NotNil(t, tc.expectedBody, string(body))
+			}
+		})
+	}
+}
