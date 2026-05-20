@@ -27,9 +27,9 @@ func main() {
 	h := handler.NewHandler(serverConfig, service.UrlService{Storage: storage})
 
 	router := chi.NewRouter()
-	router.Get("/{id}", handler.LoggerHandler(h.UrlHandlerDecoder))
-	router.Post("/", handler.LoggerHandler(h.UrlHandlerEncoder))
-	router.Post("/api/shorten", handler.LoggerHandler(h.JsonUrlHandler))
+	router.Get("/{id}", handler.LoggerHandler(handler.GzipHandler(h.UrlHandlerDecoder)))
+	router.Post("/", handler.LoggerHandler(handler.GzipHandler(h.UrlHandlerEncoder)))
+	router.Post("/api/shorten", handler.LoggerHandler(handler.GzipHandler(h.JsonUrlHandler)))
 
 	err := http.ListenAndServe(serverConfig.Addr, router)
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
