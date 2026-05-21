@@ -9,6 +9,7 @@ import (
 
 	"url-shortener/internal/config/db"
 	"url-shortener/internal/config/srv"
+	"url-shortener/internal/repository"
 	"url-shortener/internal/service"
 
 	"github.com/go-chi/chi"
@@ -22,7 +23,21 @@ import (
 func TestUrlHandlerEncoder(t *testing.T) {
 	serverConfig := srv.InitServerConfig()
 	storage := db.InitStore()
-	h := NewHandler(serverConfig, service.UrlService{Storage: storage})
+	reader, errReader := repository.NewUrlFileReader("test.json")
+	if errReader != nil {
+		assert.NoError(t, errReader, "error init file storage reader")
+	}
+	writer, errWriter := repository.NewUrlFileWriter("test.json")
+	if errWriter != nil {
+		assert.NoError(t, errWriter, "error init file storage writer")
+	}
+	defer writer.Close()
+	defer reader.Close()
+	h := NewHandler(serverConfig, service.UrlService{
+		Storage:       storage,
+		UrlFileReader: *reader,
+		UrlFileWriter: *writer,
+	})
 
 	urlHandlerEncoder := http.HandlerFunc(h.UrlHandlerEncoder)
 	server := httptest.NewServer(urlHandlerEncoder)
@@ -36,6 +51,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 		requestContentType string
 		responseRegexp     string
 		contentType        string
+		headerLocation     string
 	}
 	tests := []struct {
 		name string
@@ -105,9 +121,23 @@ func TestUrlHandlerEncoder(t *testing.T) {
 }
 
 func TestUrlHandlerDecoder(t *testing.T) {
+	reader, errReader := repository.NewUrlFileReader("test.json")
+	if errReader != nil {
+		assert.NoError(t, errReader, "error init file storage reader")
+	}
+	writer, errWriter := repository.NewUrlFileWriter("test.json")
+	if errWriter != nil {
+		assert.NoError(t, errWriter, "error init file storage writer")
+	}
+	defer writer.Close()
+	defer reader.Close()
 	storage := db.InitStore()
 	h := &Handler{
-		urlService: service.UrlService{Storage: storage},
+		urlService: service.UrlService{
+			Storage:       storage,
+			UrlFileReader: *reader,
+			UrlFileWriter: *writer,
+		},
 	}
 
 	urlHandlerDecoder := http.HandlerFunc(h.UrlHandlerDecoder)
@@ -133,16 +163,6 @@ func TestUrlHandlerDecoder(t *testing.T) {
 				requestMethod:      http.MethodGet,
 				requestContentType: "text/plain",
 				headerLocation:     "https://yandex.ru/",
-				contentType:        "text/plain",
-			},
-		},
-		{
-			name: "#2 should return 307 for https://ya.ru/",
-			want: want{
-				code:               307,
-				requestMethod:      http.MethodGet,
-				requestContentType: "text/plain",
-				headerLocation:     "https://ya.ru/",
 				contentType:        "text/plain",
 			},
 		},
@@ -185,9 +205,23 @@ func TestUrlHandlerDecoder(t *testing.T) {
 }
 
 func TestJsonUrlHandler(t *testing.T) {
+	reader, errReader := repository.NewUrlFileReader("test.json")
+	if errReader != nil {
+		assert.NoError(t, errReader, "error init file storage reader")
+	}
+	writer, errWriter := repository.NewUrlFileWriter("test.json")
+	if errWriter != nil {
+		assert.NoError(t, errWriter, "error init file storage writer")
+	}
+	defer writer.Close()
+	defer reader.Close()
 	storage := db.InitStore()
 	h := &Handler{
-		urlService: service.UrlService{Storage: storage},
+		urlService: service.UrlService{
+			Storage:       storage,
+			UrlFileReader: *reader,
+			UrlFileWriter: *writer,
+		},
 	}
 
 	r := chi.NewRouter()

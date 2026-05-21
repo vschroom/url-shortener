@@ -59,6 +59,10 @@ func (urlFileWriter *UrlFileWriter) Close() error {
 	return urlFileWriter.file.Close()
 }
 
+func (urlFileWriter *UrlFileWriter) Remove() error {
+	return os.Remove(urlFileWriter.file.Name())
+}
+
 type UrlFileReader struct {
 	file    *os.File
 	decoder *json.Decoder
@@ -89,4 +93,8 @@ func (c *UrlFileReader) GetUrlInfo() (*[]model.UrlFileEntity, error) {
 
 func (c *UrlFileReader) Close() error {
 	return c.file.Close()
+}
+
+func (c *UrlFileReader) Remove() error {
+	return os.Remove(c.file.Name())
 }
