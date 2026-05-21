@@ -39,6 +39,9 @@ func main() {
 		UrlFileWriter: *writer,
 	})
 
+	defer reader.Close()
+	defer writer.Close()
+
 	router := chi.NewRouter()
 	router.Get("/{id}", handler.LoggerHandler(handler.GzipHandler(h.UrlHandlerDecoder)))
 	router.Post("/", handler.LoggerHandler(handler.GzipHandler(h.UrlHandlerEncoder)))
