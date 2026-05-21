@@ -6,6 +6,7 @@ import (
 	"url-shortener/internal/config/srv"
 	"url-shortener/internal/handler"
 	"url-shortener/internal/logger"
+	"url-shortener/internal/repository"
 	"url-shortener/internal/service"
 
 	"log"
@@ -24,7 +25,19 @@ func main() {
 		log.Fatal(logErr)
 	}
 
-	h := handler.NewHandler(serverConfig, service.UrlService{Storage: storage})
+	reader, errReader := repository.NewUrlFileReader(serverConfig.FileStoragePath + "test.json")
+	if errReader != nil {
+		log.Fatal(errReader)
+	}
+	writer, errWriter := repository.NewUrlFileWriter(serverConfig.FileStoragePath + "test.json")
+	if errWriter != nil {
+		log.Fatal(errWriter)
+	}
+	h := handler.NewHandler(serverConfig, service.UrlService{
+		Storage:       storage,
+		UrlFileReader: *reader,
+		UrlFileWriter: *writer,
+	})
 
 	router := chi.NewRouter()
 	router.Get("/{id}", handler.LoggerHandler(handler.GzipHandler(h.UrlHandlerDecoder)))
