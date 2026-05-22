@@ -9,6 +9,8 @@ import (
 
 	"path/filepath"
 
+	"errors"
+
 	"go.uber.org/zap"
 )
 
@@ -19,17 +21,27 @@ type FileHolder struct {
 }
 
 func NewUrlFileHolder(filePath string, filename string) (*FileHolder, error) {
-	dir := filepath.Join("./", filePath)
-	errDir := os.MkdirAll(dir, 0755)
-	if errDir != nil {
-		return nil, errDir
-	}
+	path := filepath.Join("./", filePath)
+	_, err := os.Stat(path)
 
-	filename = filepath.Join(dir, "/", filename)
-
-	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0777)
-	if err != nil {
-		return nil, err
+	filename = filepath.Join(path, "/", filename)
+	var file *os.File
+	if err == nil || !errors.Is(err, os.ErrNotExist) {
+		f, err := os.OpenFile(filename, os.O_RDWR, 0777)
+		if err != nil {
+			return nil, err
+		}
+		file = f
+	} else {
+		errDir := os.MkdirAll(path, 0755)
+		if errDir != nil {
+			return nil, errDir
+		}
+		f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0777)
+		if err != nil {
+			return nil, err
+		}
+		file = f
 	}
 
 	jsonEncoder := json.NewEncoder(file)
