@@ -13,8 +13,7 @@ import (
 
 type UrlService struct {
 	Storage       repository.Storage
-	UrlFileReader repository.UrlFileReader
-	UrlFileWriter repository.UrlFileWriter
+	UrlFileHolder repository.FileHolder
 }
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -35,7 +34,7 @@ func (urlService *UrlService) StoreUrl(baseUrl string) (string, error) {
 			OriginalUrl: baseUrl,
 		}
 
-		err := urlService.UrlFileWriter.StoreUrlInfo(urlInfo)
+		err := urlService.UrlFileHolder.StoreUrlInfo(urlInfo)
 		if err != nil && errors.Is(err, repository.ErrShortUrlDuplicateKey) {
 			logger.Log.Info("Short Url duplicate for different base urls. Try to generate another one")
 			randShortUrl = randomString(shortUrlLength)
@@ -51,7 +50,7 @@ func (urlService *UrlService) StoreUrl(baseUrl string) (string, error) {
 }
 
 func (urlService *UrlService) GetUrl(shortUrl string) string {
-	urlInfo, err := urlService.UrlFileReader.GetUrlInfo()
+	urlInfo, err := urlService.UrlFileHolder.GetUrlInfo()
 	if err != nil {
 		panic(err)
 	}

@@ -23,20 +23,15 @@ import (
 func TestUrlHandlerEncoder(t *testing.T) {
 	serverConfig := srv.InitServerConfig()
 	storage := db.InitStore()
-	reader, errReader := repository.NewUrlFileReader("test.json")
-	if errReader != nil {
-		assert.NoError(t, errReader, "error init file storage reader")
+	holder, errHolder := repository.NewUrlFileHolder("test.json")
+	if errHolder != nil {
+		assert.NoError(t, errHolder, "error init file storage reader")
 	}
-	writer, errWriter := repository.NewUrlFileWriter("test.json")
-	if errWriter != nil {
-		assert.NoError(t, errWriter, "error init file storage writer")
-	}
-	defer writer.Close()
-	defer reader.Close()
+	defer holder.Close()
+	defer holder.Remove()
 	h := NewHandler(serverConfig, service.UrlService{
 		Storage:       storage,
-		UrlFileReader: *reader,
-		UrlFileWriter: *writer,
+		UrlFileHolder: *holder,
 	})
 
 	urlHandlerEncoder := http.HandlerFunc(h.UrlHandlerEncoder)
@@ -121,22 +116,17 @@ func TestUrlHandlerEncoder(t *testing.T) {
 }
 
 func TestUrlHandlerDecoder(t *testing.T) {
-	reader, errReader := repository.NewUrlFileReader("test.json")
-	if errReader != nil {
-		assert.NoError(t, errReader, "error init file storage reader")
+	holder, errHolder := repository.NewUrlFileHolder("test.json")
+	if errHolder != nil {
+		assert.NoError(t, errHolder, "error init file storage reader")
 	}
-	writer, errWriter := repository.NewUrlFileWriter("test.json")
-	if errWriter != nil {
-		assert.NoError(t, errWriter, "error init file storage writer")
-	}
-	defer writer.Close()
-	defer reader.Close()
+	defer holder.Close()
+	defer holder.Remove()
 	storage := db.InitStore()
 	h := &Handler{
 		urlService: service.UrlService{
 			Storage:       storage,
-			UrlFileReader: *reader,
-			UrlFileWriter: *writer,
+			UrlFileHolder: *holder,
 		},
 	}
 
@@ -205,22 +195,17 @@ func TestUrlHandlerDecoder(t *testing.T) {
 }
 
 func TestJsonUrlHandler(t *testing.T) {
-	reader, errReader := repository.NewUrlFileReader("test.json")
-	if errReader != nil {
-		assert.NoError(t, errReader, "error init file storage reader")
+	holder, errHolder := repository.NewUrlFileHolder("test.json")
+	if errHolder != nil {
+		assert.NoError(t, errHolder, "error init file storage reader")
 	}
-	writer, errWriter := repository.NewUrlFileWriter("test.json")
-	if errWriter != nil {
-		assert.NoError(t, errWriter, "error init file storage writer")
-	}
-	defer writer.Close()
-	defer reader.Close()
+	defer holder.Close()
+	defer holder.Remove()
 	storage := db.InitStore()
 	h := &Handler{
 		urlService: service.UrlService{
 			Storage:       storage,
-			UrlFileReader: *reader,
-			UrlFileWriter: *writer,
+			UrlFileHolder: *holder,
 		},
 	}
 
