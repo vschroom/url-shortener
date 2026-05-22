@@ -7,6 +7,8 @@ import (
 	"url-shortener/internal/logger"
 	"url-shortener/internal/model"
 
+	"path/filepath"
+
 	"go.uber.org/zap"
 )
 
@@ -16,7 +18,15 @@ type FileHolder struct {
 	decoder *json.Decoder
 }
 
-func NewUrlFileHolder(filename string) (*FileHolder, error) {
+func NewUrlFileHolder(filePath string, filename string) (*FileHolder, error) {
+	dir := filepath.Join("./", filePath)
+	errDir := os.MkdirAll(dir, 0755)
+	if errDir != nil {
+		return nil, errDir
+	}
+
+	filename = filepath.Join(dir, "/", filename)
+
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0777)
 	if err != nil {
 		return nil, err

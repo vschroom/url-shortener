@@ -23,7 +23,7 @@ import (
 func TestUrlHandlerEncoder(t *testing.T) {
 	serverConfig := srv.InitServerConfig()
 	storage := db.InitStore()
-	holder, errHolder := repository.NewUrlFileHolder("test.json")
+	holder, errHolder := repository.NewUrlFileHolder("", "test.json")
 	if errHolder != nil {
 		assert.NoError(t, errHolder, "error init file storage reader")
 	}
@@ -116,7 +116,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 }
 
 func TestUrlHandlerDecoder(t *testing.T) {
-	holder, errHolder := repository.NewUrlFileHolder("test.json")
+	holder, errHolder := repository.NewUrlFileHolder("", "test.json")
 	if errHolder != nil {
 		assert.NoError(t, errHolder, "error init file storage reader")
 	}
@@ -195,7 +195,7 @@ func TestUrlHandlerDecoder(t *testing.T) {
 }
 
 func TestJsonUrlHandler(t *testing.T) {
-	holder, errHolder := repository.NewUrlFileHolder("test.json")
+	holder, errHolder := repository.NewUrlFileHolder("", "test.json")
 	if errHolder != nil {
 		assert.NoError(t, errHolder, "error init file storage reader")
 	}
