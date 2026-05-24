@@ -27,7 +27,6 @@ func NewUrlFileHolder(filePath string, filename string) (*FileHolder, error) {
 	}
 
 	// path = filepath.Join(path, ".json")
-	path = path + ".json"
 	_, err := os.Stat(path)
 
 	errMkdir := os.MkdirAll(filepath.Dir(path), 0755)
