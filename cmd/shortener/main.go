@@ -2,7 +2,6 @@ package main
 
 import (
 	"net/http"
-	"url-shortener/internal/config/db"
 	"url-shortener/internal/config/srv"
 	"url-shortener/internal/handler"
 	"url-shortener/internal/logger"
@@ -18,8 +17,6 @@ import (
 
 func main() {
 	serverConfig := srv.InitServerConfig()
-	storage := db.InitStore()
-
 	logErr := logger.Initialize(serverConfig.LoggerLevel)
 	if logErr != nil {
 		log.Fatal(logErr)
@@ -29,10 +26,7 @@ func main() {
 	if errHolder != nil {
 		log.Fatal(errHolder)
 	}
-	h := handler.NewHandler(serverConfig, service.UrlService{
-		Storage:       storage,
-		UrlFileHolder: *holder,
-	})
+	h := handler.NewHandler(serverConfig, service.UrlService{UrlFileHolder: *holder})
 
 	defer holder.Close()
 

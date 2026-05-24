@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"url-shortener/internal/config/db"
 	"url-shortener/internal/config/srv"
 	"url-shortener/internal/repository"
 	"url-shortener/internal/service"
@@ -22,7 +21,6 @@ import (
 
 func TestUrlHandlerEncoder(t *testing.T) {
 	serverConfig := srv.InitServerConfig()
-	storage := db.InitStore()
 	holder, errHolder := repository.NewUrlFileHolder(".", "test.json")
 	if errHolder != nil {
 		assert.NoError(t, errHolder, "error init file storage reader")
@@ -30,7 +28,6 @@ func TestUrlHandlerEncoder(t *testing.T) {
 	defer holder.Close()
 	defer holder.Remove()
 	h := NewHandler(serverConfig, service.UrlService{
-		Storage:       storage,
 		UrlFileHolder: *holder,
 	})
 
@@ -122,10 +119,8 @@ func TestUrlHandlerDecoder(t *testing.T) {
 	}
 	defer holder.Close()
 	defer holder.Remove()
-	storage := db.InitStore()
 	h := &Handler{
 		urlService: service.UrlService{
-			Storage:       storage,
 			UrlFileHolder: *holder,
 		},
 	}
@@ -201,10 +196,8 @@ func TestJsonUrlHandler(t *testing.T) {
 	}
 	defer holder.Close()
 	defer holder.Remove()
-	storage := db.InitStore()
 	h := &Handler{
 		urlService: service.UrlService{
-			Storage:       storage,
 			UrlFileHolder: *holder,
 		},
 	}

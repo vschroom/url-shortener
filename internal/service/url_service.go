@@ -12,7 +12,6 @@ import (
 )
 
 type UrlService struct {
-	Storage       repository.Storage
 	UrlFileHolder repository.FileHolder
 }
 
