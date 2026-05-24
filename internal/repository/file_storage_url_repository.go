@@ -9,8 +9,6 @@ import (
 
 	"path/filepath"
 
-	"errors"
-
 	"go.uber.org/zap"
 )
 
@@ -21,29 +19,46 @@ type FileHolder struct {
 }
 
 func NewUrlFileHolder(filePath string, filename string) (*FileHolder, error) {
-	path := filepath.Join("./", filePath, "/", filename)
+	var path string
+	if filePath == "." {
+		path = filepath.Join(filePath, "/", filename)
+	} else {
+		path = filePath
+	}
+
+	// path = filepath.Join(path, ".json")
+	path = path + ".json"
 	_, err := os.Stat(path)
 
-	var file *os.File
-	if err == nil || !errors.Is(err, os.ErrNotExist) {
-		f, err := os.OpenFile(path, os.O_RDWR, 0777)
-		if err != nil {
-			return nil, err
-		}
-		file = f
-	} else {
-		if filePath != "" {
-			errDir := os.MkdirAll(filepath.Join("./", filePath), 0755)
-			if errDir != nil {
-				return nil, errDir
-			}
-		}
-		f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0777)
-		if err != nil {
-			return nil, err
-		}
-		file = f
+	errMkdir := os.MkdirAll(filepath.Dir(path), 0755)
+	if errMkdir != nil {
+		return nil, err
 	}
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0777)
+	if err != nil {
+		return nil, err
+	}
+
+	// var file *os.File
+	// if err == nil || !errors.Is(err, os.ErrNotExist) {
+	// 	f, err := os.OpenFile(path, os.O_RDWR, 0777)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	file = f
+	// } else {
+	// 	if filePath != "" {
+	// 		errDir := os.MkdirAll(filepath.Join("./", filePath), 0755)
+	// 		if errDir != nil {
+	// 			return nil, errDir
+	// 		}
+	// 	}
+	// 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0777)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	file = f
+	// }
 
 	jsonEncoder := json.NewEncoder(file)
 	jsonDecoder := json.NewDecoder(file)
