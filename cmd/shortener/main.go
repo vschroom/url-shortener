@@ -22,7 +22,7 @@ func main() {
 		log.Fatal(logErr)
 	}
 
-	holder, errHolder := repository.NewUrlFileHolder(serverConfig.FileStoragePath, "test.json")
+	holder, errHolder := repository.NewUrlFileHolder(serverConfig.FileStoragePath)
 	if errHolder != nil {
 		log.Fatal(errHolder)
 	}

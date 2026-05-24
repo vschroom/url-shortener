@@ -18,18 +18,10 @@ var ErrShortUrlDuplicateKey = errors.New("short URL already exists")
 
 type FileHolder struct {
 	file    *os.File
-	encoder *json.Encoder
 	decoder *json.Decoder
 }
 
-func NewUrlFileHolder(filePath string, filename string) (*FileHolder, error) {
-	var path string
-	if filePath == "." {
-		path = filepath.Join(filePath, "/", filename)
-	} else {
-		path = filePath
-	}
-
+func NewUrlFileHolder(path string) (*FileHolder, error) {
 	errMkdir := os.MkdirAll(filepath.Dir(path), 0755)
 	if errMkdir != nil {
 		return nil, errMkdir
@@ -39,14 +31,9 @@ func NewUrlFileHolder(filePath string, filename string) (*FileHolder, error) {
 		return nil, err
 	}
 
-	jsonEncoder := json.NewEncoder(file)
 	jsonDecoder := json.NewDecoder(file)
 
-	return &FileHolder{
-		file:    file,
-		encoder: jsonEncoder,
-		decoder: jsonDecoder,
-	}, nil
+	return &FileHolder{file: file, decoder: jsonDecoder}, nil
 }
 
 func (fileHolder *FileHolder) StoreUrlInfo(urlInfo *model.UrlFileEntity) error {
