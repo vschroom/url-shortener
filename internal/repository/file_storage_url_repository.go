@@ -21,23 +21,24 @@ type FileHolder struct {
 }
 
 func NewUrlFileHolder(filePath string, filename string) (*FileHolder, error) {
-	path := filepath.Join("./", filePath)
+	path := filepath.Join("./", filePath, "/", filename)
 	_, err := os.Stat(path)
 
-	filename = filepath.Join(path, "/", filename)
 	var file *os.File
 	if err == nil || !errors.Is(err, os.ErrNotExist) {
-		f, err := os.OpenFile(filename, os.O_RDWR, 0777)
+		f, err := os.OpenFile(path, os.O_RDWR, 0777)
 		if err != nil {
 			return nil, err
 		}
 		file = f
 	} else {
-		errDir := os.MkdirAll(path, 0755)
-		if errDir != nil {
-			return nil, errDir
+		if filePath != "" {
+			errDir := os.MkdirAll(filepath.Join("./", filePath), 0755)
+			if errDir != nil {
+				return nil, errDir
+			}
 		}
-		f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0777)
+		f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0777)
 		if err != nil {
 			return nil, err
 		}
