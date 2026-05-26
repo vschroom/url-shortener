@@ -2,13 +2,17 @@ package service
 
 import (
 	"errors"
-	"log"
 	"math/rand/v2"
+	"url-shortener/internal/logger"
+	"url-shortener/internal/model"
 	"url-shortener/internal/repository"
+
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type UrlService struct {
-	Storage repository.Storage
+	UrlFileHolder repository.FileHolder
 }
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -18,15 +22,25 @@ const maxShortUrlRetryCount = 5
 func (urlService *UrlService) StoreUrl(baseUrl string) (string, error) {
 	randShortUrl := randomString(shortUrlLength)
 	for n := range maxShortUrlRetryCount {
-		log.Default().Printf("Try #%d to store short Url\n", (n + 1))
-		err := urlService.Storage.StoreUrl(randShortUrl, baseUrl)
+		logger.Log.Info(
+			"Try to store short Url",
+			zap.Int("Try #", n+1),
+		)
+
+		urlInfo := &model.UrlFileEntity{
+			Id:          uuid.New(),
+			ShortUrl:    randShortUrl,
+			OriginalUrl: baseUrl,
+		}
+
+		err := urlService.UrlFileHolder.StoreUrlInfo(urlInfo)
 		if err != nil && errors.Is(err, repository.ErrShortUrlDuplicateKey) {
-			log.Default().Println("Short Url duplicate for different base urls. Try to generate another one")
+			logger.Log.Info("Short Url duplicate for different base urls. Try to generate another one")
 			randShortUrl = randomString(shortUrlLength)
 		} else if err != nil {
 			return "", err
 		} else {
-			log.Default().Println("Short Url successfully generated and store")
+			logger.Log.Info("Short Url successfully generated and store")
 			return randShortUrl, nil
 		}
 	}
@@ -34,8 +48,18 @@ func (urlService *UrlService) StoreUrl(baseUrl string) (string, error) {
 	return "", errors.New("Short Url generation failed")
 }
 
-func (urlService *UrlService) GetUrl(shortUrl string) string {
-	return urlService.Storage.GetUrl(shortUrl)
+func (urlService *UrlService) GetUrl(shortUrl string) (string, error) {
+	urlInfo, err := urlService.UrlFileHolder.GetUrlInfo()
+	if err != nil {
+		return "", err
+	}
+
+	for _, info := range *urlInfo {
+		if target := info.ShortUrl; target == shortUrl {
+			return info.OriginalUrl, nil
+		}
+	}
+	return "", nil
 }
 
 func randomString(length int) string {

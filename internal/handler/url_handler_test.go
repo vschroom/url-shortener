@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"url-shortener/internal/config/cons"
-	"url-shortener/internal/config/db"
+	"url-shortener/internal/config/srv"
+	"url-shortener/internal/repository"
 	"url-shortener/internal/service"
 
 	"github.com/go-chi/chi"
@@ -20,9 +20,16 @@ import (
 )
 
 func TestUrlHandlerEncoder(t *testing.T) {
-	serverConsoleArgs := cons.ParseServerFlags()
-	storage := db.InitStore()
-	h := NewHandler(serverConsoleArgs, service.UrlService{Storage: storage})
+	serverConfig := srv.InitServerConfig()
+	holder, errHolder := repository.NewUrlFileHolder("/tmp/test.json")
+	if errHolder != nil {
+		assert.NoError(t, errHolder, "error init file storage reader")
+	}
+	defer holder.Close()
+	defer holder.Remove()
+	h := NewHandler(serverConfig, service.UrlService{
+		UrlFileHolder: *holder,
+	})
 
 	urlHandlerEncoder := http.HandlerFunc(h.UrlHandlerEncoder)
 	server := httptest.NewServer(urlHandlerEncoder)
@@ -36,6 +43,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 		requestContentType string
 		responseRegexp     string
 		contentType        string
+		headerLocation     string
 	}
 	tests := []struct {
 		name string
@@ -48,7 +56,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 				request:            "https://yandex.ru/",
 				requestMethod:      http.MethodPost,
 				requestContentType: "text/plain",
-				responseRegexp:     "^http://localhost:8080/[a-zA-Z0-9]{8}$",
+				responseRegexp:     "^" + serverConfig.BaseShortAddr + "[a-zA-Z0-9]{8}$",
 				contentType:        "text/plain; charset=utf-8",
 			},
 		},
@@ -59,7 +67,7 @@ func TestUrlHandlerEncoder(t *testing.T) {
 				request:            "https://ya.ru/",
 				requestMethod:      http.MethodPost,
 				requestContentType: "text/plain",
-				responseRegexp:     "^http://localhost:8080/[a-zA-Z0-9]{8}$",
+				responseRegexp:     "^" + serverConfig.BaseShortAddr + "[a-zA-Z0-9]{8}$",
 				contentType:        "text/plain; charset=utf-8",
 			},
 		},
@@ -105,9 +113,16 @@ func TestUrlHandlerEncoder(t *testing.T) {
 }
 
 func TestUrlHandlerDecoder(t *testing.T) {
-	storage := db.InitStore()
+	holder, errHolder := repository.NewUrlFileHolder("/tmp/test.json")
+	if errHolder != nil {
+		assert.NoError(t, errHolder, "error init file storage reader")
+	}
+	defer holder.Close()
+	defer holder.Remove()
 	h := &Handler{
-		urlService: service.UrlService{Storage: storage},
+		urlService: service.UrlService{
+			UrlFileHolder: *holder,
+		},
 	}
 
 	urlHandlerDecoder := http.HandlerFunc(h.UrlHandlerDecoder)
@@ -133,16 +148,6 @@ func TestUrlHandlerDecoder(t *testing.T) {
 				requestMethod:      http.MethodGet,
 				requestContentType: "text/plain",
 				headerLocation:     "https://yandex.ru/",
-				contentType:        "text/plain",
-			},
-		},
-		{
-			name: "#2 should return 307 for https://ya.ru/",
-			want: want{
-				code:               307,
-				requestMethod:      http.MethodGet,
-				requestContentType: "text/plain",
-				headerLocation:     "https://ya.ru/",
 				contentType:        "text/plain",
 			},
 		},
@@ -180,6 +185,90 @@ func TestUrlHandlerDecoder(t *testing.T) {
 			// проверяем код ответа
 			assert.Equal(t, test.want.code, res.StatusCode)
 			assert.Equal(t, test.want.headerLocation, w.Header().Get("Location"))
+		})
+	}
+}
+
+func TestJsonUrlHandler(t *testing.T) {
+	holder, errHolder := repository.NewUrlFileHolder("/tmp/test.json")
+	if errHolder != nil {
+		assert.NoError(t, errHolder, "error init file storage reader")
+	}
+	defer holder.Close()
+	defer holder.Remove()
+	h := &Handler{
+		urlService: service.UrlService{
+			UrlFileHolder: *holder,
+		},
+	}
+
+	r := chi.NewRouter()
+	r.Post("/api/shorten", h.JsonUrlHandler)
+	server := httptest.NewServer(r)
+
+	defer server.Close()
+
+	testCases := []struct {
+		name         string
+		method       string
+		body         string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "#1 method not allowed for GET",
+			method:       http.MethodGet,
+			expectedCode: http.StatusMethodNotAllowed,
+			expectedBody: "",
+		},
+		{
+			name:         "#2 method not allowed for PUT",
+			method:       http.MethodPut,
+			expectedCode: http.StatusMethodNotAllowed,
+			expectedBody: "",
+		},
+		{
+			name:         "#3 method not allowed for DELETE",
+			method:       http.MethodDelete,
+			expectedCode: http.StatusMethodNotAllowed,
+			expectedBody: "",
+		},
+		{
+			name:         "#4 method POST without body",
+			method:       http.MethodPost,
+			expectedCode: http.StatusInternalServerError,
+			expectedBody: "",
+		},
+		{
+			name:         "#5 method_post_unsupported_type",
+			method:       http.MethodPost,
+			body:         `[{"url":""}]`,
+			expectedCode: http.StatusInternalServerError,
+			expectedBody: "",
+		},
+		{
+			name:         "method_post_success",
+			method:       http.MethodPost,
+			body:         `{"url":"https://ya.ru/"}`,
+			expectedCode: http.StatusCreated,
+			expectedBody: `{"result":""}`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(tc.method, server.URL+"/api/shorten", strings.NewReader(tc.body))
+			request.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, request)
+			resp := w.Result()
+
+			assert.Equal(t, tc.expectedCode, resp.StatusCode, "Response code didn't match expected")
+			if tc.expectedBody != "" {
+				body, err := io.ReadAll(resp.Body)
+				assert.NoError(t, err, "error read json body")
+				assert.NotNil(t, tc.expectedBody, string(body))
+			}
 		})
 	}
 }

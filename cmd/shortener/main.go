@@ -2,9 +2,10 @@ package main
 
 import (
 	"net/http"
-	"url-shortener/internal/config/cons"
-	"url-shortener/internal/config/db"
+	"url-shortener/internal/config/srv"
 	"url-shortener/internal/handler"
+	"url-shortener/internal/logger"
+	"url-shortener/internal/repository"
 	"url-shortener/internal/service"
 
 	"log"
@@ -15,16 +16,26 @@ import (
 )
 
 func main() {
-	serverArgs := cons.ParseServerFlags()
-	storage := db.InitStore()
+	serverConfig := srv.InitServerConfig()
+	logErr := logger.Initialize(serverConfig.LoggerLevel)
+	if logErr != nil {
+		log.Fatal(logErr)
+	}
 
-	h := handler.NewHandler(serverArgs, service.UrlService{Storage: storage})
+	holder, errHolder := repository.NewUrlFileHolder(serverConfig.FileStoragePath)
+	if errHolder != nil {
+		log.Fatal(errHolder)
+	}
+	h := handler.NewHandler(serverConfig, service.UrlService{UrlFileHolder: *holder})
+
+	defer holder.Close()
 
 	router := chi.NewRouter()
-	router.Get("/{id}", h.UrlHandlerDecoder)
-	router.Post("/", h.UrlHandlerEncoder)
+	router.Get("/{id}", handler.LoggerHandler(handler.GzipHandler(h.UrlHandlerDecoder)))
+	router.Post("/", handler.LoggerHandler(handler.GzipHandler(h.UrlHandlerEncoder)))
+	router.Post("/api/shorten", handler.LoggerHandler(handler.GzipHandler(h.JsonUrlHandler)))
 
-	err := http.ListenAndServe(serverArgs.Addr, router)
+	err := http.ListenAndServe(serverConfig.Addr, router)
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
