@@ -62,7 +62,11 @@ func (handler *Handler) UrlHandlerEncoder(rw http.ResponseWriter, r *http.Reques
 
 func (handler *Handler) UrlHandlerDecoder(rw http.ResponseWriter, r *http.Request) {
 	encodeUrl := chi.URLParam(r, "id")
-	baseUrl := handler.urlService.GetUrl(encodeUrl)
+	baseUrl, err := handler.urlService.GetUrl(encodeUrl)
+	if err != nil {
+		http.Error(rw, "error while getting result url", http.StatusInternalServerError)
+		return
+	}
 
 	rw.Header().Set("Location", baseUrl)
 	rw.WriteHeader(http.StatusTemporaryRedirect)

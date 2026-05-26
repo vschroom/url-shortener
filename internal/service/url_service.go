@@ -48,18 +48,18 @@ func (urlService *UrlService) StoreUrl(baseUrl string) (string, error) {
 	return "", errors.New("Short Url generation failed")
 }
 
-func (urlService *UrlService) GetUrl(shortUrl string) string {
+func (urlService *UrlService) GetUrl(shortUrl string) (string, error) {
 	urlInfo, err := urlService.UrlFileHolder.GetUrlInfo()
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	for _, info := range *urlInfo {
 		if target := info.ShortUrl; target == shortUrl {
-			return info.OriginalUrl
+			return info.OriginalUrl, nil
 		}
 	}
-	return ""
+	return "", nil
 }
 
 func randomString(length int) string {
